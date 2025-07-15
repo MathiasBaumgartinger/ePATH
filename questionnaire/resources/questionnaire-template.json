@@ -1,0 +1,70 @@
+{
+  "Natural Language": {
+    "description": "",
+    "questions": {
+      "Skills & Strengths": {
+        "type": "textarea",
+        "question": "List technical skills (like programming languages, software) and soft skills (like communication, teamwork). This helps match you to roles needing these abilities.",
+        "params": {}
+      }
+    }
+  },
+  "Structured Preferences": {
+    "description": "",
+    "questions": {
+      "Math": {
+        "type": "range",
+        "question": "Confidence with numbers, logic, calculations, and data analysis. Important for STEM, finance, analytics, etc.",
+        "params": {
+          "min_value": 0,
+          "max_value": 100,
+          "step": 1,
+          "default_value": 50
+        }
+      }
+    },
+    "Academic Confidence": {
+      "description": "How comfortable and capable do you feel with tasks typical in these academic areas? This suggests potential aptitudes relevant to various careers.",
+      "questions": {
+        "Math": {
+          "type": "radio",
+          "question": "How confident do you feel with mathematics (e.g., algebra, calculus, statistics)?",
+          "params": {
+            "options": [
+              { "label": "Not confident at all", "value": 1 },
+              { "label": "Slightly confident", "value": 2 },
+              { "label": "Moderately confident", "value": 3 },
+              { "label": "Very confident", "value": 4 },
+              { "label": "Extremely confident", "value": 5 }
+            ],
+            "default_value": 3
+          }
+        }
+      }
+    },
+    "Personality (Big 5)": {
+      "description": "These traits describe general tendencies in how you think, feel, and behave. They can influence your work style, team fit, and career satisfaction.",
+      "questions": {
+        "Extraversion": {
+          "type": "checkbox",
+          "question": "Select the statements that describe your typical behavior in social situations:",
+          "params": {
+            "options": [
+              { "label": "Outgoing and energetic", "value": "outgoing" },
+              { "label": "Reserve my thoughts", "value": "reserved" },
+              {
+                "label": "Enjoy initiating conversations",
+                "value": "conversationalist"
+              },
+              {
+                "label": "Prefer one-on-one interactions",
+                "value": "one_on_one"
+              }
+            ],
+            "default_value": []
+          }
+        }
+      }
+    }
+  }
+}

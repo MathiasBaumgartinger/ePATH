@@ -1,0 +1,9 @@
+{
+  "name": "@pathway/vue-questionnaire",
+  "version": "0.1.0",
+  "main": "src/index.js",
+  "type": "module",
+  "peerDependencies": {
+    "vue": "^3.3.0"
+  }
+}
