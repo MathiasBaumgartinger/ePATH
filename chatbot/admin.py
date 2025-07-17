@@ -1,3 +1,6 @@
 from django.contrib import admin
+from .models import ChatUserMessage, ChatBotResponse
 
-# Register your models here.
+
+admin.site.register(ChatUserMessage)
+admin.site.register(ChatBotResponse)

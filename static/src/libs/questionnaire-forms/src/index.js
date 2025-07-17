@@ -1,10 +1,30 @@
+import { markRaw } from 'vue';
+
+// Mixin to track when a field becomes "done" based on value changes
+export const FieldDoneMixin = {
+  data() {
+    return { progressed: false }
+  },
+  emits: ['progressed'],
+  watch: {
+    modelValue(value) {
+      let progressed = false
+      if (Array.isArray(value)) progressed = value.length > 0
+      else progressed = value != null && value !== ''
+      this.progressed = progressed
+      this.$emit('progressed', { id: this.question.id, progressed, value })
+    } 
+  }
+};
+
 export const TextAreaField = {
   name: 'TextAreaField',
   props: {
     modelValue: { type: String, default: '' },
     question:    { type: Object, required: true }
   },
-  emits: ['update:modelValue'],
+  mixins: [FieldDoneMixin],
+  emits: ['update:modelValue', 'progressed'],
   template: `
     <div class="mb-4">
       <label :for="question.id" class="block font-medium mb-1">{{ question.question }}</label>
@@ -24,20 +44,21 @@ export const RadioField = {
     modelValue: [String, Number],
     question:   { type: Object, required: true }
   },
-  emits: ['update:modelValue'],
+  mixins: [FieldDoneMixin],
+  emits: ['update:modelValue', 'progressed'],
   template: `
     <fieldset :id="question.id" class="mb-4">
       <legend class="font-medium mb-1">{{ question.question }}</legend>
-      <div v-for="opt in question.params.options" :key="opt.value" class="flex items-center gap-2 mb-1">
+      <div v-for="opt in question.params.options" :key="opt" class="flex items-center gap-2 mb-1">
         <input
           type="radio"
           :name="question.id"
-          :value="opt.value"
+          :value="opt"
           class="form-check-input"
-          :checked="modelValue === opt.value"
-          @change="$emit('update:modelValue', opt.value)"
+          :checked="modelValue === opt"
+          @change="$emit('update:modelValue', opt)"
         />
-        <label class="form-check-label">{{ opt.label }}</label>
+        <label class="form-check-label">{{ opt }}</label>
       </div>
     </fieldset>`
 };
@@ -48,26 +69,29 @@ export const CheckboxField = {
     modelValue: { type: Array, default: () => [] },
     question:   { type: Object, required: true }
   },
-  emits: ['update:modelValue'],
+  mixins: [FieldDoneMixin],
+  emits: ['update:modelValue', 'progressed'],
   methods: {
     toggle(val) {
+      // Compute new array without mutating props
       const next = this.modelValue.includes(val)
         ? this.modelValue.filter(v => v !== val)
-        : [...this.modelValue, val]
-      this.$emit('update:modelValue', next)
+        : [...this.modelValue, val];
+      this.$emit('update:modelValue', next);
     }
   },
   template: `
     <fieldset :id="question.id" class="mb-4">
       <legend class="font-medium mb-1">{{ question.question }}</legend>
-      <div v-for="opt in question.params.options" :key="opt.value" class="flex items-center gap-2 mb-1">
+      <div v-for="opt in question.params.options" :key="opt" class="flex items-center gap-2 mb-1">
         <input
           type="checkbox"
           class="form-check-input"
-          :checked="modelValue.includes(opt.value)"
-          @change="toggle(opt.value)"
+          :value="opt"
+          :checked="modelValue.includes(opt)"
+          @change="toggle(opt)"
         />
-        <label class="form-check-label">{{ opt.label }}</label>
+        <label class="form-check-label">{{ opt }}</label>
       </div>
     </fieldset>`
 };
@@ -78,9 +102,10 @@ export const RangeField = {
     modelValue: { type: [Number, String], default: 0 },
     question:   { type: Object, required: true }
   },
-  emits: ['update:modelValue'],
+  mixins: [FieldDoneMixin],
+  emits: ['update:modelValue', 'progressed'],
   data() {
-    return { current: this.modelValue || this.question.params.default_value || 0 };
+    return { current: this.modelValue ?? this.question.params.min ?? 0 };
   },
   watch: {
     modelValue(val) { this.current = val; }
@@ -92,11 +117,11 @@ export const RangeField = {
         type="range"
         :id="question.id"
         class="w-full"
-        :min="question.params.min_value"
-        :max="question.params.max_value"
+        :min="question.params.min"
+        :max="question.params.max"
         :step="question.params.step || 1"
         :value="current"
-        @input="e => { current = e.target.value; $emit('update:modelValue', Number(e.target.value)) }"
+        @input="e => { this.current = e.target.value; $emit('update:modelValue', Number(e.target.value)) }"
       />
     </div>`
 };
@@ -111,33 +136,29 @@ export const fieldRegistry = {
 export const QuestionnaireForm = {
   name: 'QuestionnaireForm',
   props: {
-    schema: { type: Object, required: true },
+    schema: { type: Array, required: true },
     modelValue: { type: Object, default: () => ({}) }
   },
   data() {
-    return { fieldRegistry };
+    // mark fieldRegistry raw to avoid Proxying component definitions
+    return { fieldRegistry: markRaw(fieldRegistry) };
   },
-  emits: ['update:modelValue', 'submit'],
+  emits: ['update:modelValue', 'submit', 'progressed'],
   methods: {
     update(id, value) {
       const next = { ...this.modelValue, [id]: value };
       this.$emit('update:modelValue', next);
     },
-    onSubmit(evt) {
-      evt.preventDefault();
-      this.$emit('submit', this.modelValue);
-    },
     // Flatten category → questions into iterable array
     flatQuestions() {
       const arr = [];
-      Object.entries(this.schema).forEach(([catKey, catObj]) => {
-        const catDesc = catObj.description || '';
-        Object.entries(catObj.questions || {}).forEach(([qKey, qObj]) => {
+      this.schema.forEach(category => {
+        (category.questions || []).forEach((q, idx) => {
           arr.push({
-            ...qObj,
-            id: qKey,
-            category: catKey,
-            categoryDescription: catDesc,
+            ...q,
+            id: `${category.category_title}-${idx}`,
+            category: category.category_title,
+            categoryDescription: category.category_description,
           });
         });
       });
@@ -145,20 +166,20 @@ export const QuestionnaireForm = {
     }
   },
   template: `
-    <form @submit="onSubmit" class="space-y-6">
+    <form class="space-y-6">
       <template v-for="(group, idx) in groupByCategory" :key="idx">
         <h2 class="text-xl font-semibold">{{ group.category }}</h2>
         <p v-if="group.categoryDescription" class="text-gray-600 mb-2">{{ group.categoryDescription }}</p>
         <component
           v-for="q in group.items"
           :key="q.id"
-          :is="fieldRegistry[q.type.toLowerCase()] || UnknownField"
+          :is="fieldRegistry[q.question_type.toLowerCase()] || UnknownField"
           :question="q"
-          :model-value="modelValue[q.id] ?? q.params?.default_value ?? (q.type==='checkbox'?[]: '')"
+          :model-value="modelValue[q.id] ?? (q.question_type==='checkbox'? [] : '')"
           @update:modelValue="val => update(q.id, val)"
+          @progressed="$emit('progressed', $event)"
         />
       </template>
-      <button type="submit" class="mt-4 px-4 py-2 rounded bg-blue-600 text-white">Submit</button>
     </form>`,
   computed: {
     groupByCategory() {

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_countries',
     'rest_framework',
     'questionnaire',
+    'chatbot',
     'epath',  # Assuming 'epath' is the main app for your project
     # Add other apps as needed
 ]
