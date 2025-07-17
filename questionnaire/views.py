@@ -2,7 +2,6 @@ from django.shortcuts import render
 from django.views import View
 from questionnaire.models import QuestionnaireDefinition, QuestionnaireRecord
 from rest_framework.views import APIView
-from django.views.generic import TemplateView
 from rest_framework.response import Response
 from rest_framework import status
 from django.urls import reverse_lazy
@@ -23,24 +22,24 @@ class QuestionnaireDefinitionView(APIView):
     
     def _verify_definition_json(self, request):
         definition_json = request.data.get('definition')
-        # TODO: Implement JSON schema validation here
-        if not isinstance(definition_json, dict):
+        # Ensure definition is an array of category objects
+        if not isinstance(definition_json, list):
             return Response(
-                {"error": "Invalid questionnaire definition format. Expected a JSON object."},
+                {"error": "Invalid questionnaire definition format. Expected a JSON array."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         return definition_json
     
     def post(self, request, *args, **kwargs):
-        definition_or_response = self._verify_country(request)
-        # If _verify_country returned a Response, bail out early
+        # Validate input definition JSON
+        definition_or_response = self._verify_definition_json(request)
         if isinstance(definition_or_response, Response):
             return definition_or_response
 
-        # Create a new questionnaire definition for the specified country
+        # Create a new questionnaire definition
         serializer = QuestionnaireDefinitionSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(definition=definition_or_response)
+            serializer.save()  # id auto-generated in model.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -88,18 +87,19 @@ class QuestionnaireRecordView(APIView):
         return True
     
     def _verify(self, request) -> Response:
-        questionnaire_def = QuestionnaireDefinition.objects.get(request.data.get('questionnaire_def_fk'))
+        questionnaire_def = QuestionnaireDefinition.objects.get(id=request.data.get('questionnaire_def_fk'))
         if not questionnaire_def:
             return Response(
                 {"error": "Invalid or missing questionnaire definition."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        if not self._validate_answers(questionnaire_def.definition, request.data.get('answers', {})):
-            return Response(
-                {"error": "Answers do not match the questionnaire definition."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        
+        # TODO: Validate the answers against the questionnaire definition
+        # if not self._validate_answers(questionnaire_def.definition, request.data.get('answers', {})):
+        #     return Response(
+        #         {"error": "Answers do not match the questionnaire definition."},
+        #         status=status.HTTP_400_BAD_REQUEST
+        #     )
         
         return Response(status=status.HTTP_200_OK)
         
@@ -113,19 +113,33 @@ class QuestionnaireRecordView(APIView):
     
     def post(self, request, *args, **kwargs) -> Response:
         # Verify the request
+        print(request.data)
         verification_response = self._verify(request)
         if verification_response and verification_response.status_code != status.HTTP_200_OK:
             return verification_response
         
         # Create a new questionnaire definition
         serializer = QuestionnaireRecordSerializer(
-            data=request.data, 
-            status=self._get_questionnaire_status(request))
+            data=request.data)
     
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, *args, **kwargs) -> Response:
+        user_uuid = request.query_params.get('user_uuid')
+        if not user_uuid:
+            return Response(
+                {"error": "Missing required query parameter: 'user_uuid'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Fetch all records for this user
+        records = QuestionnaireRecord.objects.filter(user_uuid=user_uuid).order_by('-date')
+        serializer = QuestionnaireRecordSerializer(records, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
     
 class QuestionnaireDefinitionManagementView(CreateView):
     """
@@ -147,6 +161,6 @@ class QuestionnaireDefinitionManagementView(CreateView):
         context["page_title"] = "Questionnaire Definitions"
         return context
 
-class HelloWorldView(View):
+class QuestionnaireView(View):
   def get(self, request, *args, **kwargs):
-        return render(request, "base.html")
+        return render(request, "questionnaire.html")

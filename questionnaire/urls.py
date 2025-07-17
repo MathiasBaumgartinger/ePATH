@@ -1,11 +1,13 @@
-from django.urls import path
-from .views import HelloWorldView, QuestionnaireDefinitionView, QuestionnaireRecordView, QuestionnaireDefinitionManagementView 
+from django.urls import path, re_path
+from .views import QuestionnaireView, QuestionnaireDefinitionView, QuestionnaireRecordView, QuestionnaireDefinitionManagementView 
 
 urlpatterns = [
-    # Test endpoint
-    path('world/', HelloWorldView.as_view(), name='hello_world_api'),
+    # SPA entry point for questionnaire
+    path('', QuestionnaireView.as_view(), name='questionnaire'),
+
     path('definitions/', QuestionnaireDefinitionView.as_view(), name='questionnaire_definition'),
     path('records/', QuestionnaireRecordView.as_view(), name='questionnaire_record'),
-    # Management view for questionnaire definitions
     path('definition-management/', QuestionnaireDefinitionManagementView.as_view(), name='questionnaire_management'),
+    # Handle category-specific routes (with or without trailing slash)
+    re_path(r'^category/(?P<category_id>\d+)/?$', QuestionnaireView.as_view(), name='questionnaire_category')
 ]

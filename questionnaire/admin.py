@@ -1,3 +1,6 @@
 from django.contrib import admin
+from . import models as questionnaire_models
 
-# Register your models here.
+
+admin.site.register(questionnaire_models.QuestionnaireDefinition)
+admin.site.register(questionnaire_models.QuestionnaireRecord)
