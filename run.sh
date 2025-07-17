@@ -2,6 +2,15 @@
 set -e
 
 PROJECT_DIR=/home/mathias/Dev/synapsyx/ePATH
+
+# ─── LOAD .env INTO THE ENVIRONMENT ─────────────────────────────────────────
+if [ -f "$PROJECT_DIR/.env" ]; then
+  # export every variable in .env
+  set -o allexport
+  source "$PROJECT_DIR/.env"
+  set +o allexport
+fi
+
 VENV=${PROJECT_DIR}/.venv/bin/activate
 
 echo "Starting Docker Compose services…"
