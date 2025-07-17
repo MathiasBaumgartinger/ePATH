@@ -8,6 +8,69 @@ from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView
 
 from questionnaire.serializers import QuestionnaireDefinitionSerializer, QuestionnaireRecordSerializer
+import os
+import json
+from django.conf import settings
+
+
+class SystemPromptView(APIView):
+    def get(self, request, user_uuid, *args, **kwargs):
+        try:
+            latest_record = QuestionnaireRecord.objects.filter(user_uuid=user_uuid).latest('date')
+        except QuestionnaireRecord.DoesNotExist:
+            return Response(
+                {"error": "No questionnaire record found for this user."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            # Corrected path to the system prompt
+            prompt_template_path = os.path.join(settings.BASE_DIR, 'questionnaire', 'resources', 'SYSTEM_PROMPT.md')
+            with open(prompt_template_path, 'r') as f:
+                prompt_template = f.read()
+        except FileNotFoundError:
+            return Response(
+                {"error": "System prompt template not found."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Get the questionnaire definition and answers
+        definition = latest_record.questionnaire_def_fk.definition
+        answers = latest_record.answers
+
+        # Create a lookup for questions to build a readable summary
+        questions_map = {}
+        for category in definition:
+            cat_title = category.get('category_title')
+            questions_map[cat_title] = {}
+            for i, q_item in enumerate(category.get('questions', [])):
+                question_text = q_item.get('question')
+                questions_map[cat_title][f"{cat_title}-{i}"] = question_text
+
+        # Build the human-readable summary
+        summary_lines = []
+        for category_title, category_answers in answers.items():
+            summary_lines.append(f"Category: {category_title}")
+            for answer_key, answer_value in category_answers.items():
+                question = questions_map.get(category_title, {}).get(answer_key, "Unknown Question")
+                summary_lines.append(f"  - {question}: {answer_value}")
+        
+        questionnaire_summary = "\n".join(summary_lines)
+        questionnaire_definition = json.dumps(definition, indent=2)
+        
+        # Format the final prompt with both summary and definition
+        formatted_prompt = prompt_template.format(
+            questionnaire_summary=questionnaire_summary,
+            questionnaire_definition=questionnaire_definition
+        )
+
+        return Response(
+            {
+                "role": "system",
+                "content": formatted_prompt
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 class QuestionnaireDefinitionView(APIView):

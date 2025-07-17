@@ -27,6 +27,7 @@ onMounted(() => store.fetchSchema('AT'))
         :schema="store.schema"
         :progress="store.progress"
         @start="(idx) => $router.push({ name: 'CategoryView', params: { categoryId: idx } })"
+        @submitted="() => $router.push({ name: 'SubmissionSummary' })"
       />
       <!-- Render CategoryView for specific category routes -->
       <component

@@ -5,6 +5,7 @@ import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import Overview from './Overview.vue'
 import CategoryView from './CategoryView.vue'
+import SubmissionSummary from './SubmissionSummary.vue';
 import piniaPluginPersistedState from "pinia-plugin-persistedstate"
 import axios from "axios"
 
@@ -21,7 +22,8 @@ const routes = [
     name: 'CategoryView',
     component: CategoryView,
     props: true
-  }
+  },
+  { path: '/questionnaire/summary', name: 'SubmissionSummary', component: SubmissionSummary },
 ]
 const router = createRouter({
   history: createWebHistory(),
@@ -34,4 +36,4 @@ pinia.use(piniaPluginPersistedState)
 app.use(pinia)
 // configure Vue Router to handle questionnaire routes
 app.use(router)
-app.mount('#app')
+app.mount('#questionnaire-app')

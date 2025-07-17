@@ -48,7 +48,7 @@ function submitQuestionnaire() {
       // Handle error appropriately, e.g., show a notification
     })
 }
-const emit = defineEmits(['start'])
+const emit = defineEmits(['start', 'submitted'])
 </script>
 
 <style scoped>
